@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Catálogo de semillas Ecohuertosalduie</title>
+<title>Catálogo de semillas</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IM+Fell+DW+Pica:ital@0;1&family=Libre+Caslon+Text:ital,wght@0,400;0,700;1,400&display=swap">
 <style>
 :root{
@@ -38,6 +38,7 @@ nav.idx a:hover{text-decoration:underline}
 .row .dots{flex:1;border-bottom:1.5px dotted var(--muted);transform:translateY(-3px);min-width:12px}
 .row .m{flex:0 1 auto;max-width:62%;font-size:13px;color:var(--muted);text-align:right}
 .row .n{font-weight:700;color:var(--accent);margin-left:4px}
+.empty.none::before{content:"\2766";display:block;font-size:34px;font-style:normal;color:var(--accent);margin-bottom:6px}
 .empty{text-align:center;font-style:italic;color:var(--muted);padding:40px 0}
 footer{border-top:4px double var(--rule);margin-top:40px;padding-top:12px;text-align:center;font-size:13px;color:var(--muted);font-style:italic}
 @media (max-width:700px){
@@ -64,7 +65,7 @@ footer{border-top:4px double var(--rule);margin-top:40px;padding-top:12px;text-a
 <body>
 <div class="page">
 <header>
-  <div class="kicker">Colección particular Ecohuertosalduie · Edición <span id="ed"></span></div>
+  <div class="kicker">Colección particular · Edición <span id="ed"></span></div>
   <h1>Catálogo de <em>semillas</em></h1>
   <p class="sub">Variedades conservadas, ordenadas por nombre</p>
 </header>
@@ -85,8 +86,7 @@ footer{border-top:4px double var(--rule);margin-top:40px;padding-top:12px;text-a
 // Columnas: ID,Nombre,Variedad,Nombre científico,Origen,Año
 // Origen = procedencia: tienda, persona o lugar de donde viene la semilla.
 const CSV = `ID,Nombre,Variedad,Nombre científico,Origen,Año
-1,Espinaca,Matador,Spinacia oleracea,Gartenland,2022
-2,Rabanitos,Rojo y blanco,Raphanus sativus var. sativus,Gartenland,2022`;
+`;
 // ================================================================================
 
 function parse(t){
@@ -132,6 +132,8 @@ function merge(list){
 const meta=it=>Object.entries(it.po).map(([o,ys])=>o?(ys.length?o+" ("+ys.join(", ")+")":o):ys.join(", ")).filter(Boolean).join(" · ");
 
 function render(){
+  if(!D.length){$("count").textContent="";$("idx").innerHTML="";
+    $("out").innerHTML='<p class="empty none">No hay datos actualmente.</p>';return}
   const q=norm($("q").value),o=$("origen").value,a=$("anio").value;
   const L=merge(D.filter(x=>(!o||x.o===o)&&(!a||x.a===a)&&(!q||norm([x.n,x.v,x.s,x.o].join(" ")).includes(q))));
   $("count").textContent=L.length+(L.length==1?" variedad":" variedades")+" de "+merge(D).length;
