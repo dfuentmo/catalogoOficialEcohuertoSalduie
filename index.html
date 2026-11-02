@@ -37,6 +37,10 @@ nav.idx a:hover{text-decoration:underline}
 .row .v{flex:0 1 auto;max-width:65%;min-width:0;overflow-wrap:anywhere}
 .row .dots{flex:1;border-bottom:1.5px dotted var(--muted);transform:translateY(-3px);min-width:12px}
 .row .m{flex:0 1 auto;max-width:62%;font-size:13px;color:var(--muted);text-align:right}
+.fx{display:inline-block;margin-left:6px;color:var(--accent);text-decoration:none;font-size:13px;line-height:1;border:1px solid var(--accent);padding:1px 5px 2px;border-radius:2px}
+.fx:hover,.fx:focus-visible{background:var(--accent);color:var(--paper)}
+.row.out{opacity:.6}
+.row.out .v,.row.out .m{text-decoration:line-through;text-decoration-thickness:1.5px}
 .row .n{font-weight:700;color:var(--accent);margin-left:4px}
 .empty.none::before{content:"\2766";display:block;font-size:34px;font-style:normal;color:var(--accent);margin-bottom:6px}
 .empty{text-align:center;font-style:italic;color:var(--muted);padding:40px 0}
@@ -58,6 +62,7 @@ footer{border-top:4px double var(--rule);margin-top:40px;padding-top:12px;text-a
   .row .dots{display:none}
   .row .m{flex:1 1 100%;max-width:none;text-align:left;white-space:normal;padding-bottom:4px;border-bottom:1px dotted var(--muted)}
   .row .n{float:right}
+  .fx{padding:5px 10px;font-size:15px}
 }
 @media print{.controls,nav.idx{display:none}:root{--paper:#fff;--ink:#000}}
 </style>
@@ -69,7 +74,7 @@ footer{border-top:4px double var(--rule);margin-top:40px;padding-top:12px;text-a
   <h1>Catálogo de <em>semillas</em></h1>
   <p class="sub">Variedades conservadas, ordenadas por nombre</p>
 </header>
-
+ 
 <div class="controls">
   <input id="q" type="search" placeholder="Buscar nombre, variedad, especie o procedencia…" aria-label="Buscar">
   <select id="origen" aria-label="Procedencia"><option value="">Todas las procedencias</option></select>
@@ -80,15 +85,15 @@ footer{border-top:4px double var(--rule);margin-top:40px;padding-top:12px;text-a
 <main id="out"></main>
 <footer>Nº = número de referencia en la colección. Al final de cada línea: procedencia (tienda, persona o lugar) y año.</footer>
 </div>
-
+ 
 <script>
 // ===== DATOS: sustituye este bloque por el CSV exportado de tu Google Sheet =====
-// Columnas: ID,Nombre,Variedad,Nombre científico,Origen,Año
+// Columnas: ID,Nombre,Variedad,Nombre científico,Origen,Año,Agotado (Sí = tachado),Web (enlace a la ficha técnica)
 // Origen = procedencia: tienda, persona o lugar de donde viene la semilla.
 const CSV = `ID,Nombre,Variedad,Nombre científico,Origen,Año
 `;
 // ================================================================================
-
+ 
 function parse(t){
   const rows=[];let r=[],f="",q=false;
   for(let i=0;i<t.length;i++){const c=t[i];
@@ -101,7 +106,7 @@ function parse(t){
   return rows}
 let D=[];
 function load(text){const rows=parse(text.trim());rows.shift();
-D=rows.map(r=>({id:(r[0]||"").trim(),n:(r[1]||"").trim(),v:(r[2]||"").trim(),s:(r[3]||"").trim(),o:(r[4]||"").trim(),a:(r[5]||"").trim()})).filter(x=>x.n||x.v)}
+D=rows.map(r=>({id:(r[0]||"").trim(),n:(r[1]||"").trim(),v:(r[2]||"").trim(),s:(r[3]||"").trim(),o:(r[4]||"").trim(),a:(r[5]||"").trim(),g:(r[6]||"").trim(),w:(r[7]||"").trim()})).filter(x=>x.n||x.v)}
 const esc=s=>s.replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const norm=s=>s.normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase();
 const $=id=>document.getElementById(id);
@@ -113,24 +118,30 @@ uniq("o").forEach(o=>$("origen").add(new Option(o,o)));
 uniq("a").reverse().forEach(a=>$("anio").add(new Option(a,a)));
 $("origen").value=so;$("anio").value=sa}
 $("ed").textContent=new Date().getFullYear();
-
+ 
 function merge(list){
   const names={},items={},out=[];
   list.forEach(x=>{
     const nk=norm(x.n);names[nk]=names[nk]||x.n;
     const k=nk+"|"+norm(x.v);
     let it=items[k];
-    if(!it){it=items[k]={n:names[nk],v:x.v,s:x.s,ids:[],po:{}};out.push(it)}
+    if(!it){it=items[k]={n:names[nk],v:x.v,s:x.s,ids:[],po:{},all:true,w:""};out.push(it)}
     if(!it.s&&x.s)it.s=x.s;
+    if(!it.w&&x.w)it.w=x.w;
     if(x.id)it.ids.push(x.id);
-    const o=x.o||"";(it.po[o]=it.po[o]||[]);
-    if(x.a&&!it.po[o].includes(x.a))it.po[o].push(x.a);
+    const o=x.o||"",ag=norm(x.g).trim()==="si";
+    it.po[o]=it.po[o]||{};it.all=it.all&&ag;
+    if(x.a)it.po[o][x.a]=(x.a in it.po[o])?(it.po[o][x.a]&&ag):ag;
   });
   out.forEach(it=>{it.ids.sort((a,b)=>a.localeCompare(b,"es",{numeric:true}));
-    Object.values(it.po).forEach(y=>y.sort())});
+    });
   return out}
-const meta=it=>Object.entries(it.po).map(([o,ys])=>o?(ys.length?o+" ("+ys.join(", ")+")":o):ys.join(", ")).filter(Boolean).join(" · ");
-
+const webUrl=u=>{u=(u||"").trim();if(/^www\./i.test(u))u="https://"+u;return /^https?:\/\//i.test(u)?u:""};
+const ficha=it=>{const u=webUrl(it.w);return u?` <a class="fx" href="${esc(u)}" target="_blank" rel="noopener" title="Ficha técnica" aria-label="Ficha técnica de ${esc(it.v||it.n)}">↗</a>`:""};
+const meta=it=>Object.entries(it.po).map(([o,ys])=>{
+  const Y=Object.keys(ys).sort().map(y=>ys[y]&&!it.all?"<s>"+esc(y)+"</s>":esc(y)).join(", ");
+  return o?(Y?esc(o)+" ("+Y+")":esc(o)):Y}).filter(Boolean).join(" · ");
+ 
 function render(){
   if(!D.length){$("count").textContent="";$("idx").innerHTML="";
     $("out").innerHTML='<p class="empty none">No hay datos actualmente.</p>';return}
@@ -146,10 +157,10 @@ function render(){
     letters[l].map(n=>{const g=G[n].sort((x,y)=>x.v.localeCompare(y.v,"es"));
       const sci=[...new Set(g.map(x=>x.s).filter(Boolean))].join(" · ");
       return `<section class="grp"><h2>${esc(n)}</h2>${sci?`<p class="latin">${esc(sci)}</p>`:""}`+
-        g.map(x=>`<div class="row"><span class="v">${esc(x.v||"—")}</span><span class="dots"></span><span class="m">${esc(meta(x))}<span class="n">Nº ${esc(x.ids.join(", "))}</span></span></div>`).join("")+`</section>`}).join("")+`</div>`).join("");
+        g.map(x=>`<div class="row${x.all?" out":""}"${x.all?' title="Agotado"':""}><span class="v">${esc(x.v||"—")}${ficha(x)}</span><span class="dots"></span><span class="m">${meta(x)}<span class="n">Nº ${esc(x.ids.join(", "))}</span></span></div>`).join("")+`</section>`}).join("")+`</div>`).join("");
 }
 ["q","origen","anio"].forEach(i=>$(i).addEventListener("input",render));
-
+ 
 // ===== LECTURA EN VIVO DE GOOGLE SHEETS =====
 const SHEET_ID="1EupDfEXhOmG6eRYSXXuo7rEUlkUQ8wGfqXq5kDSSucE", GID="0";
 const SHEET_URL="https://docs.google.com/spreadsheets/d/"+SHEET_ID+"/gviz/tq?tqx=out:csv&gid="+GID;
