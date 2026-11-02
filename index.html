@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Catálogo de semillas</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IM+Fell+DW+Pica:ital@0;1&family=Libre+Caslon+Text:ital,wght@0,400;0,700;1,400&display=swap">
+<style>
+:root{
+  --paper:#f1e8d3; --ink:#2b2418; --muted:#6f6247; --rule:#2b2418; --accent:#8a2f1c; --field:#e8dcc0;
+  box-sizing:border-box; padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--paper:#1f1b14;--ink:#e9dfc6;--muted:#a39673;--rule:#e9dfc6;--accent:#d98b6f;--field:#2a251b;color-scheme:dark}}
+:root[data-theme="dark"]{--paper:#1f1b14;--ink:#e9dfc6;--muted:#a39673;--rule:#e9dfc6;--accent:#d98b6f;--field:#2a251b;color-scheme:dark}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font:17px/1.45 "Libre Caslon Text",Georgia,serif}
+.page{max-width:1000px;margin:0 auto;padding:28px 22px 60px}
+header{text-align:center;border-top:4px double var(--rule);border-bottom:4px double var(--rule);padding:22px 0 18px;margin-bottom:20px}
+.kicker{font-size:12px;letter-spacing:.3em;text-transform:uppercase;color:var(--muted)}
+h1{font:400 clamp(38px,8vw,72px)/1 "IM Fell DW Pica",Georgia,serif;margin:8px 0 6px;letter-spacing:.01em}
+h1 em{color:var(--accent)}
+.sub{font-style:italic;color:var(--muted);margin:0}
+.controls{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:center;margin:0 0 14px}
+.controls input,.controls select{font:inherit;font-size:15px;color:var(--ink);background:var(--field);border:1px solid var(--rule);border-radius:0;padding:7px 10px}
+.controls input{min-width:min(260px,100%)}
+.count{text-align:center;font-size:13px;color:var(--muted);font-style:italic;margin-bottom:12px}
+nav.idx{display:flex;flex-wrap:wrap;justify-content:center;gap:2px 12px;margin-bottom:26px;font:400 20px "IM Fell DW Pica",Georgia,serif}
+nav.idx a{color:var(--accent);text-decoration:none}
+nav.idx a:hover{text-decoration:underline}
+.letter{font:400 54px/1 "IM Fell DW Pica",Georgia,serif;color:var(--accent);border-bottom:2px solid var(--rule);margin:30px 0 14px;padding-bottom:2px}
+.cols{column-count:2;column-gap:44px;column-rule:1px solid var(--muted)}
+.grp{break-inside:avoid;margin-bottom:20px}
+.grp h2{margin:0;font-size:16px;font-weight:700;letter-spacing:.14em;text-transform:uppercase}
+.latin{font-style:italic;color:var(--muted);font-size:14px;margin:0 0 4px}
+.row{display:flex;align-items:baseline;gap:6px;font-size:15px}
+.row .v{flex:none;max-width:60%}
+.row .dots{flex:1;border-bottom:1.5px dotted var(--muted);transform:translateY(-3px);min-width:12px}
+.row .m{flex:none;font-size:13px;color:var(--muted);text-align:right}
+.row .n{font-weight:700;color:var(--accent);margin-left:4px}
+.empty{text-align:center;font-style:italic;color:var(--muted);padding:40px 0}
+footer{border-top:4px double var(--rule);margin-top:40px;padding-top:12px;text-align:center;font-size:13px;color:var(--muted);font-style:italic}
+@media (max-width:700px){.cols{column-count:1;column-rule:none}.page{padding:18px 14px 50px}}
+@media print{.controls,nav.idx{display:none}:root{--paper:#fff;--ink:#000}}
+</style>
+</head>
+<body>
+<div class="page">
+<header>
+  <div class="kicker">Colección particular · Edición <span id="ed"></span></div>
+  <h1>Catálogo de <em>semillas</em></h1>
+  <p class="sub">Variedades conservadas, ordenadas por nombre</p>
+</header>
+ 
+<div class="controls">
+  <input id="q" type="search" placeholder="Buscar nombre, variedad, especie o procedencia…" aria-label="Buscar">
+  <select id="origen" aria-label="Procedencia"><option value="">Todas las procedencias</option></select>
+  <select id="anio" aria-label="Año"><option value="">Todos los años</option></select>
+</div>
+<div class="count" id="count"></div>
+<nav class="idx" id="idx"></nav>
+<main id="out"></main>
+<footer>Nº = número de referencia en la colección. Al final de cada línea: procedencia (tienda, persona o lugar) y año.</footer>
+</div>
+ 
+<script>
+// ===== DATOS: sustituye este bloque por el CSV exportado de tu Google Sheet =====
+// Columnas: ID,Nombre,Variedad,Nombre científico,Origen,Año
+// Origen = procedencia: tienda, persona o lugar de donde viene la semilla.
+const CSV = `ID,Nombre,Variedad,Nombre científico,Origen,Año
+1,Espinaca,Matador,Spinacia oleracea,Gartenland,2022
+2,Rabanitos,Rojo y blanco,Raphanus sativus var. sativus,Gartenland,2022`;
+// ================================================================================
+ 
+function parse(t){
+  const rows=[];let r=[],f="",q=false;
+  for(let i=0;i<t.length;i++){const c=t[i];
+    if(q){if(c=='"'){if(t[i+1]=='"'){f+='"';i++}else q=false}else f+=c}
+    else if(c=='"')q=true;
+    else if(c==','||c=='\t'){r.push(f);f=""}
+    else if(c=='\n'||c=='\r'){if(c=='\r'&&t[i+1]=='\n')i++;r.push(f);f="";if(r.some(x=>x.trim()))rows.push(r);r=[]}
+    else f+=c}
+  if(f||r.length){r.push(f);rows.push(r)}
+  return rows}
+let D=[];
+function load(text){const rows=parse(text.trim());rows.shift();
+D=rows.map(r=>({id:(r[0]||"").trim(),n:(r[1]||"").trim(),v:(r[2]||"").trim(),s:(r[3]||"").trim(),o:(r[4]||"").trim(),a:(r[5]||"").trim()})).filter(x=>x.n||x.v)}
+const esc=s=>s.replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const norm=s=>s.normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase();
+const $=id=>document.getElementById(id);
+const uniq=k=>[...new Set(D.map(x=>x[k]).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"es",{numeric:true}));
+function fill(){const so=$("origen").value,sa=$("anio").value;
+while($("origen").options.length>1)$("origen").remove(1);
+while($("anio").options.length>1)$("anio").remove(1);
+uniq("o").forEach(o=>$("origen").add(new Option(o,o)));
+uniq("a").reverse().forEach(a=>$("anio").add(new Option(a,a)));
+$("origen").value=so;$("anio").value=sa}
+$("ed").textContent=new Date().getFullYear();
+ 
+function render(){
+  const q=norm($("q").value),o=$("origen").value,a=$("anio").value;
+  const L=D.filter(x=>(!o||x.o===o)&&(!a||x.a===a)&&(!q||norm([x.n,x.v,x.s,x.o].join(" ")).includes(q)));
+  $("count").textContent=L.length+(L.length==1?" variedad":" variedades")+" de "+D.length;
+  const G={};L.forEach(x=>{(G[x.n]=G[x.n]||[]).push(x)});
+  const names=Object.keys(G).sort((a,b)=>a.localeCompare(b,"es"));
+  const letters={};names.forEach(n=>{const l=norm(n)[0]?.toUpperCase()||"#";(letters[l]=letters[l]||[]).push(n)});
+  $("idx").innerHTML=Object.keys(letters).map(l=>`<a href="#letra-${l}">${l}</a>`).join("");
+  if(!names.length){$("out").innerHTML='<p class="empty">No hay semillas que coincidan con la búsqueda.</p>';return}
+  $("out").innerHTML=Object.keys(letters).map(l=>`<div class="letter" id="letra-${l}">${l}</div><div class="cols">`+
+    letters[l].map(n=>{const g=G[n].sort((x,y)=>x.v.localeCompare(y.v,"es"));
+      const sci=[...new Set(g.map(x=>x.s).filter(Boolean))].join(" · ");
+      return `<section class="grp"><h2>${esc(n)}</h2>${sci?`<p class="latin">${esc(sci)}</p>`:""}`+
+        g.map(x=>`<div class="row"><span class="v">${esc(x.v||"—")}</span><span class="dots"></span><span class="m">${esc([x.o,x.a].filter(Boolean).join(" · "))}<span class="n">Nº ${esc(x.id)}</span></span></div>`).join("")+`</section>`}).join("")+`</div>`).join("");
+}
+["q","origen","anio"].forEach(i=>$(i).addEventListener("input",render));
+ 
+// ===== LECTURA EN VIVO DE GOOGLE SHEETS =====
+const SHEET_ID="1EupDfEXhOmG6eRYSXXuo7rEUlkUQ8wGfqXq5kDSSucE", GID="0";
+const SHEET_URL="https://docs.google.com/spreadsheets/d/"+SHEET_ID+"/gviz/tq?tqx=out:csv&gid="+GID;
+load(CSV);fill();render();            // copia de seguridad mientras carga
+fetch(SHEET_URL).then(r=>{if(!r.ok)throw 0;return r.text()}).then(t=>{
+  if(!/nombre/i.test(t.split("\n")[0]))throw 0;   // si no es el CSV, se mantiene la copia
+  load(t);fill();render();
+}).catch(()=>{});
+</script>
+</body>
+</html>
